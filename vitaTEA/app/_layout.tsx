@@ -22,12 +22,13 @@ function RootNavigator() {
     const emApp = grupoAtual === "(app)";
 
     if (!cuidador && emApp) {
-      router.replace("/(app)");
+      router.replace("/login");
       return;
     }
 
     if (cuidador && emAuth) {
-      router.replace("/");
+      router.replace("/(app)");
+      return;
     }
   }, [cuidador, carregando, segments, router]);
 
@@ -51,6 +52,7 @@ function RootNavigator() {
         },
       }}
     >
+      <Stack.Screen name="index" />
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(app)" />
 
