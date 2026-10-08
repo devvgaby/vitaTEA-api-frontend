@@ -51,7 +51,7 @@ export default function LinkDeviceScreen() {
   return (
     <Screen>
       <ModalHeader title="Vincular dispositivo" />
-      <Subtitle>Vincule o wearable (ESP32) de {monitoradoAtivo.nome} (RF08).</Subtitle>
+      <Subtitle>Vincule o wearable (ESP32) de {monitoradoAtivo.nome}.</Subtitle>
 
       <ErrorBanner message={erro ?? ""} />
 

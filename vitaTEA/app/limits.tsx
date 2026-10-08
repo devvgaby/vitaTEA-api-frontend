@@ -52,8 +52,7 @@ export default function LimitsScreen() {
     <Screen>
       <ModalHeader title="Limites de sinais vitais" />
       <Subtitle>
-        Personalize os limites de {monitoradoAtivo.nome} (RF15). Se não personalizar, o sistema usa limites
-        clínicos padrão (RN12).
+        Personalize os limites de {monitoradoAtivo.nome}
       </Subtitle>
 
       <ErrorBanner message={erro ?? ""} />

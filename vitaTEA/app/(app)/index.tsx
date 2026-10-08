@@ -93,7 +93,7 @@ export default function DashboardScreen() {
   return (
     <Screen onRefresh={handleRefresh} refreshing={carregandoMonitorado || carregandoDados}>
       <View style={{ marginTop: 12, gap: 4 }}>
-        <Subtitle>Olá, {cuidador?.nome?.split(" ")[0]} 👋</Subtitle>
+        <Subtitle>Olá, {cuidador?.nome?.split(" ")[0]}</Subtitle>
         <Title>{monitoradoAtivo?.nome}</Title>
       </View>
 
