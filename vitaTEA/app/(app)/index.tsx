@@ -8,6 +8,7 @@ import { Button } from "@/components/vitatea/button";
 import { colors, radius } from "@/constants/vitatea-theme";
 import { useAuth } from "@/context/AuthContext";
 import { useMonitorado } from "@/context/MonitoradoContext";
+import { useWearable } from "@/context/WearableContext";
 import { listarLeiturasPorDispositivo } from "@/lib/api/leituras";
 import { listarTiposSinais } from "@/lib/api/limites";
 import { listarAlertasPorMonitorado } from "@/lib/api/alertas";
@@ -26,6 +27,11 @@ export default function DashboardScreen() {
   const { cuidador } = useAuth();
   const { monitoradoAtivo, dispositivo, statusDevice, carregando: carregandoMonitorado, erro: erroMonitorado, recarregar } =
     useMonitorado();
+  const wearable = useWearable();
+  const bluetoothConectado = wearable.status === "conectado";
+  // No navegador com Bluetooth, vale a conexão real com o wearable; a API só sabe
+  // da última leitura e ainda considera "conectado" por alguns minutos após o desligamento.
+  const conectado = wearable.suportado ? bluetoothConectado : !!statusDevice?.conectado;
 
   const [tiposSinais, setTiposSinais] = useState<TipoSinal[]>([]);
   const [ultimasLeituras, setUltimasLeituras] = useState<LeituraDispositivo[]>([]);
@@ -105,13 +111,13 @@ export default function DashboardScreen() {
           <View
             style={[
               styles.statusDot,
-              { backgroundColor: statusDevice?.conectado ? colors.success : colors.danger },
+              { backgroundColor: conectado ? colors.success : colors.danger },
             ]}
           />
           <View style={{ flex: 1 }}>
             <Text style={styles.statusTitle}>
               {dispositivo
-                ? statusDevice?.conectado
+                ? conectado
                   ? "Dispositivo conectado"
                   : "Dispositivo desconectado"
                 : "Nenhum dispositivo vinculado"}
@@ -120,9 +126,9 @@ export default function DashboardScreen() {
               {dispositivo ? `Código ${dispositivo.codigo}` : "Vincule um dispositivo IoT para começar a monitorar"}
             </Text>
           </View>
-          {!dispositivo && (
+          {!bluetoothConectado && (
             <Pressable onPress={() => router.push("/link-device")}>
-              <Ionicons name="add-circle" size={28} color={colors.primary} />
+              <Ionicons name={dispositivo ? "bluetooth" : "add-circle"} size={28} color={colors.primary} />
             </Pressable>
           )}
         </View>
@@ -144,10 +150,12 @@ export default function DashboardScreen() {
       {/* Sinais vitais */}
       <View style={{ gap: 10 }}>
         <Text style={styles.sectionTitle}>Sinais vitais</Text>
-        {dispositivo && ultimasLeituras.length > 0 ? (
+        {dispositivo && (ultimasLeituras.length > 0 || bluetoothConectado) ? (
           <View style={styles.vitalsGrid}>
             {tiposSinais.map((tipo) => {
               const leitura = ultimasLeituras.find((l) => l.id_tipo_sinal === tipo.id_tipo_sinal);
+              // Com o wearable conectado, a frequência cardíaca vem direto do Bluetooth.
+              const aoVivo = tipo.nome === "Frequência Cardíaca" ? wearable.bpm : null;
               return (
                 <Card key={tipo.id_tipo_sinal} style={styles.vitalCard}>
                   <Ionicons
@@ -156,7 +164,7 @@ export default function DashboardScreen() {
                     color={colors.primary}
                   />
                   <Text style={styles.vitalValue}>
-                    {leitura ? `${leitura.valor}` : "--"}
+                    {aoVivo ?? (leitura ? `${leitura.valor}` : "--")}
                     <Text style={styles.vitalUnit}> {tipo.unidade_medida}</Text>
                   </Text>
                   <Text style={styles.vitalLabel}>{tipo.nome}</Text>

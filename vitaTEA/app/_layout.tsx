@@ -6,6 +6,7 @@ import "react-native-reanimated";
 
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { MonitoradoProvider } from "@/context/MonitoradoContext";
+import { WearableProvider } from "@/context/WearableContext";
 import { colors } from "@/constants/vitatea-theme";
 
 function RootNavigator() {
@@ -88,8 +89,10 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <MonitoradoProvider>
-        <RootNavigator />
-        <StatusBar style="light" />
+        <WearableProvider>
+          <RootNavigator />
+          <StatusBar style="light" />
+        </WearableProvider>
       </MonitoradoProvider>
     </AuthProvider>
   );

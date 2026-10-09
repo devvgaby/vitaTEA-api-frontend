@@ -9,7 +9,8 @@ export function ModalHeader({ title }: { title: string }) {
   return (
     <View style={styles.header}>
       <Text style={styles.title}>{title}</Text>
-      <Pressable onPress={() => router.back()} hitSlop={12}>
+      {/* Se a página foi recarregada no modal, não há histórico para voltar. */}
+      <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/(app)"))} hitSlop={12}>
         <Ionicons name="close" size={24} color={colors.textMuted} />
       </Pressable>
     </View>

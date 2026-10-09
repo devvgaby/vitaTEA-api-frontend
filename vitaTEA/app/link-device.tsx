@@ -3,18 +3,20 @@ import { View, Text, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
-import { Screen, Subtitle, ErrorBanner, EmptyState } from "@/components/vitatea/ui";
+import { Screen, Card, Subtitle, ErrorBanner, EmptyState } from "@/components/vitatea/ui";
 import { ModalHeader } from "@/components/vitatea/modal-header";
 import { TextField } from "@/components/vitatea/text-field";
 import { Button } from "@/components/vitatea/button";
 import { colors } from "@/constants/vitatea-theme";
 import { useMonitorado } from "@/context/MonitoradoContext";
+import { useWearable } from "@/context/WearableContext";
 import { vincularDispositivo } from "@/lib/api/dispositivos";
 import { extrairErro } from "@/lib/api/client";
 
 export default function LinkDeviceScreen() {
   const router = useRouter();
-  const { monitoradoAtivo, recarregar } = useMonitorado();
+  const { monitoradoAtivo, dispositivo, recarregar } = useMonitorado();
+  const wearable = useWearable();
 
   const [codigo, setCodigo] = useState("");
   const [carregando, setCarregando] = useState(false);
@@ -48,30 +50,77 @@ export default function LinkDeviceScreen() {
     );
   }
 
+  // Sem Web Bluetooth (app nativo ou navegador sem suporte): vínculo manual pelo código.
+  if (!wearable.suportado) {
+    return (
+      <Screen>
+        <ModalHeader title="Vincular dispositivo" />
+        <Subtitle>Vincule o wearable (ESP32) de {monitoradoAtivo.nome}.</Subtitle>
+
+        <ErrorBanner message={erro ?? ""} />
+
+        <View style={styles.infoBox}>
+          <Ionicons name="information-circle-outline" size={18} color={colors.accent} />
+          <Text style={styles.infoText}>
+            Este navegador não tem Bluetooth. Abra o app no Chrome ou Edge para procurar o wearable, ou
+            informe o nome dele (ex: VitaTEA-A1B2C3) para apenas vincular.
+          </Text>
+        </View>
+
+        <TextField
+          label="Código do dispositivo"
+          placeholder="Ex: VitaTEA-A1B2C3"
+          value={codigo}
+          onChangeText={setCodigo}
+        />
+
+        <Button title="Vincular dispositivo" onPress={handleVincular} loading={carregando} />
+      </Screen>
+    );
+  }
+
+  const conectado = wearable.status === "conectado";
+
   return (
     <Screen>
       <ModalHeader title="Vincular dispositivo" />
-      <Subtitle>Vincule o wearable (ESP32) de {monitoradoAtivo.nome}.</Subtitle>
+      <Subtitle>Conecte o wearable (ESP32) de {monitoradoAtivo.nome} por Bluetooth.</Subtitle>
 
-      <ErrorBanner message={erro ?? ""} />
+      <ErrorBanner message={wearable.erro ?? ""} />
 
       <View style={styles.infoBox}>
         <Ionicons name="information-circle-outline" size={18} color={colors.accent} />
         <Text style={styles.infoText}>
-          O código deve ser exatamente o mesmo gravado no firmware do ESP32 (variável de código do
-          dispositivo). É ele que autentica as leituras enviadas pelo hardware.
+          {dispositivo
+            ? `Este monitorado está vinculado ao dispositivo ${dispositivo.codigo}. Selecione-o na lista do navegador para conectar.`
+            : "O navegador vai listar os wearables VitaTEA ligados por perto. O que você escolher será vinculado a este monitorado."}
         </Text>
       </View>
 
-      <TextField
-        label="Código do dispositivo"
-        placeholder="Ex: ESP32-A1B2C3"
-        autoCapitalize="characters"
-        value={codigo}
-        onChangeText={setCodigo}
-      />
+      {conectado && (
+        <Card style={styles.bpmCard}>
+          <Ionicons name="heart" size={22} color={colors.danger} />
+          <View>
+            <Text style={styles.bpmValue}>
+              {wearable.bpm ?? "--"}
+              <Text style={styles.bpmUnit}> bpm</Text>
+            </Text>
+            <Text style={styles.bpmLabel}>
+              {wearable.bpm === null ? "Conectado, aguardando medição..." : "Recebendo em tempo real"}
+            </Text>
+          </View>
+        </Card>
+      )}
 
-      <Button title="Vincular dispositivo" onPress={handleVincular} loading={carregando} />
+      {conectado ? (
+        <Button title="Desconectar" variant="secondary" onPress={wearable.desconectar} />
+      ) : (
+        <Button
+          title="Procurar dispositivos Bluetooth"
+          onPress={wearable.conectar}
+          loading={wearable.status === "conectando"}
+        />
+      )}
     </Screen>
   );
 }
@@ -87,4 +136,8 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   infoText: { color: colors.text, fontSize: 12, flex: 1, lineHeight: 17 },
+  bpmCard: { flexDirection: "row", alignItems: "center", gap: 12 },
+  bpmValue: { color: colors.text, fontSize: 26, fontWeight: "700" },
+  bpmUnit: { fontSize: 13, color: colors.textMuted, fontWeight: "400" },
+  bpmLabel: { color: colors.textMuted, fontSize: 12 },
 });

@@ -1,12 +1,17 @@
 import React from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { colors, radius } from "@/constants/vitatea-theme";
+import { useAuth } from "@/context/AuthContext";
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const { cuidador } = useAuth();
+
+  // Quem já está logado e recarrega a página cai aqui ("/"): vai direto para o painel.
+  if (cuidador) return <Redirect href="/(app)" />;
 
   return (
     <View style={styles.container}>
