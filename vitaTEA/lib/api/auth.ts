@@ -15,7 +15,9 @@ export async function cadastrar(nome: string, email: string, senha: string) {
 }
 
 export async function esqueciSenha(email: string) {
-  const { data } = await api.post<{ message: string }>("/auth/esqueci-senha", { email });
+  const { data } = await api.post<{ message: string; resetToken?: string }>("/auth/esqueci-senha", {
+    email,
+  });
   return data;
 }
 

@@ -7,6 +7,8 @@ import "react-native-reanimated";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { MonitoradoProvider } from "@/context/MonitoradoContext";
 import { WearableProvider } from "@/context/WearableContext";
+import { NotificacaoProvider } from "@/context/NotificacaoContext";
+import { AlertaBanner } from "@/components/vitatea/alerta-banner";
 import { colors } from "@/constants/vitatea-theme";
 
 function RootNavigator() {
@@ -45,6 +47,7 @@ function RootNavigator() {
   }
 
   return (
+    <>
     <Stack
       screenOptions={{
         headerShown: false,
@@ -81,7 +84,19 @@ function RootNavigator() {
         name="change-password"
         options={{ presentation: "modal" }}
       />
+
+      <Stack.Screen
+        name="edit-monitored"
+        options={{ presentation: "modal" }}
+      />
+
+      <Stack.Screen
+        name="report"
+        options={{ presentation: "modal" }}
+      />
     </Stack>
+    {cuidador ? <AlertaBanner /> : null}
+    </>
   );
 }
 
@@ -89,10 +104,12 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <MonitoradoProvider>
-        <WearableProvider>
-          <RootNavigator />
-          <StatusBar style="light" />
-        </WearableProvider>
+        <NotificacaoProvider>
+          <WearableProvider>
+            <RootNavigator />
+            <StatusBar style="light" />
+          </WearableProvider>
+        </NotificacaoProvider>
       </MonitoradoProvider>
     </AuthProvider>
   );

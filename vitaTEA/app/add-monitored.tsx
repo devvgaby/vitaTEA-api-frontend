@@ -46,7 +46,7 @@ export default function AddMonitoredScreen() {
           monitorado.id_monitorado,
           contatoNome.trim(),
           contatoTelefone.trim(),
-          contatoParentesco.trim(),
+          contatoParentesco.trim() || "Não informado",
         );
       }
 

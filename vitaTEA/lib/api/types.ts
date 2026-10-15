@@ -68,3 +68,34 @@ export type Alerta = {
     TipoSinal?: TipoSinal;
   };
 };
+
+export type PeriodoRelatorio = "1h" | "6h" | "24h" | "7d" | "30d";
+
+export type PontoSerie = { t: string; media: number; min: number; max: number; n: number };
+
+export type ResumoSinal = {
+  id_tipo_sinal: number;
+  nome: string;
+  unidade_medida: string;
+  limites: { min: number; max: number; personalizado: boolean } | null;
+  total: number;
+  media: number | null;
+  minimo: number | null;
+  maximo: number | null;
+  fora_dos_limites: number;
+  percentual_fora: number;
+  serie: PontoSerie[];
+};
+
+export type Relatorio = {
+  monitorado: Monitorado;
+  periodo: { desde: string; ate: string };
+  gerado_em: string;
+  total_leituras: number;
+  sinais: ResumoSinal[];
+  alertas: {
+    total: number;
+    por_nivel: Record<NivelCriticidade, number>;
+    recentes: { id_alerta: number; mensagem: string; nivel_criticidade: NivelCriticidade; data_hora: string }[];
+  };
+};

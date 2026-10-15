@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { Link, useRouter } from "expo-router";
+import { Link, useLocalSearchParams, useRouter } from "expo-router";
 
 import { Screen, Title, Subtitle, ErrorBanner } from "@/components/vitatea/ui";
 import { TextField } from "@/components/vitatea/text-field";
@@ -11,10 +11,12 @@ import { extrairErro } from "@/lib/api/client";
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  // O e-mail traz um link /forgot-password?token=...; ao abri-lo, o código já vem preenchido.
+  const { token: tokenDoLink } = useLocalSearchParams<{ token?: string }>();
 
-  const [etapa, setEtapa] = useState<"solicitar" | "redefinir">("solicitar");
+  const [etapa, setEtapa] = useState<"solicitar" | "redefinir">(tokenDoLink ? "redefinir" : "solicitar");
   const [email, setEmail] = useState("");
-  const [resetToken, setResetToken] = useState("");
+  const [resetToken, setResetToken] = useState(tokenDoLink ?? "");
   const [novaSenha, setNovaSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -27,6 +29,8 @@ export default function ForgotPasswordScreen() {
     try {
       const resultado = await esqueciSenha(email.trim());
       setMensagem(resultado.message);
+      // Só em desenvolvimento (sem SMTP configurado) a API devolve o código na resposta.
+      if (resultado.resetToken) setResetToken(resultado.resetToken);
       setEtapa("redefinir");
     } catch (error) {
       setErro(extrairErro(error, "Não foi possível solicitar a redefinição."));
@@ -55,8 +59,8 @@ export default function ForgotPasswordScreen() {
         <Title>Recuperar senha</Title>
         <Subtitle>
           {etapa === "solicitar"
-            ? "Informe o e-mail cadastrado para receber o código de redefinição."
-            : "Informe o código recebido e a nova senha."}
+            ? "Informe o e-mail cadastrado para receber o link de redefinição."
+            : "Informe o código recebido por e-mail (ou abra o link) e a nova senha."}
         </Subtitle>
       </View>
 
@@ -76,7 +80,7 @@ export default function ForgotPasswordScreen() {
             value={email}
             onChangeText={setEmail}
           />
-          <Button title="Enviar código" onPress={handleSolicitar} loading={carregando} />
+          <Button title="Enviar link por e-mail" onPress={handleSolicitar} loading={carregando} />
         </>
       ) : (
         <>

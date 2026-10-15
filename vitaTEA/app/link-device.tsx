@@ -112,7 +112,31 @@ export default function LinkDeviceScreen() {
         </Card>
       )}
 
-      {conectado ? (
+      {conectado && (
+        <Card style={styles.bpmCard}>
+          <Ionicons name="water" size={22} color={colors.primary} />
+          <View>
+            <Text style={styles.bpmValue}>
+              {wearable.spo2 ?? "--"}
+              <Text style={styles.bpmUnit}> %</Text>
+            </Text>
+            <Text style={styles.bpmLabel}>
+              {wearable.spo2 === null
+                ? "Saturação de oxigênio: mantenha o dedo parado (leva alguns segundos)..."
+                : "Saturação de oxigênio em tempo real"}
+            </Text>
+          </View>
+        </Card>
+      )}
+
+      {wearable.status === "reconectando" && (
+        <View style={styles.infoBox}>
+          <Ionicons name="sync-outline" size={18} color={colors.accent} />
+          <Text style={styles.infoText}>Conexão perdida. Tentando reconectar ao dispositivo automaticamente...</Text>
+        </View>
+      )}
+
+      {conectado || wearable.status === "reconectando" ? (
         <Button title="Desconectar" variant="secondary" onPress={wearable.desconectar} />
       ) : (
         <Button

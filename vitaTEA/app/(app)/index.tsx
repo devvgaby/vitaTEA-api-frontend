@@ -9,6 +9,7 @@ import { colors, radius } from "@/constants/vitatea-theme";
 import { useAuth } from "@/context/AuthContext";
 import { useMonitorado } from "@/context/MonitoradoContext";
 import { useWearable } from "@/context/WearableContext";
+import { useNotificacao } from "@/context/NotificacaoContext";
 import { listarLeiturasPorDispositivo } from "@/lib/api/leituras";
 import { listarTiposSinais } from "@/lib/api/limites";
 import { listarAlertasPorMonitorado } from "@/lib/api/alertas";
@@ -28,6 +29,7 @@ export default function DashboardScreen() {
   const { monitoradoAtivo, dispositivo, statusDevice, carregando: carregandoMonitorado, erro: erroMonitorado, recarregar } =
     useMonitorado();
   const wearable = useWearable();
+  const { permissao, ativarNotificacoes } = useNotificacao();
   const bluetoothConectado = wearable.status === "conectado";
   // No navegador com Bluetooth, vale a conexão real com o wearable; a API só sabe
   // da última leitura e ainda considera "conectado" por alguns minutos após o desligamento.
@@ -46,7 +48,7 @@ export default function DashboardScreen() {
     try {
       const [tipos, leituras, alertas] = await Promise.all([
         listarTiposSinais(),
-        listarLeiturasPorDispositivo(dispositivo.id_dispositivo),
+        listarLeiturasPorDispositivo(dispositivo.id_dispositivo, { limite: 300 }),
         listarAlertasPorMonitorado(monitoradoAtivo.id_monitorado),
       ]);
 
@@ -134,6 +136,17 @@ export default function DashboardScreen() {
         </View>
       </Card>
 
+      {/* Convite para ativar as notificações do navegador */}
+      {permissao === "default" && (
+        <Pressable onPress={ativarNotificacoes}>
+          <Card style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <Ionicons name="notifications-outline" size={22} color={colors.primary} />
+            <Text style={styles.alertBannerText}>Ativar notificações de emergência neste navegador</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} style={{ marginLeft: "auto" }} />
+          </Card>
+        </Pressable>
+      )}
+
       {/* Alertas em aberto */}
       {totalAlertasAbertos > 0 && (
         <Pressable onPress={() => router.push("/alerts")}>
@@ -154,8 +167,13 @@ export default function DashboardScreen() {
           <View style={styles.vitalsGrid}>
             {tiposSinais.map((tipo) => {
               const leitura = ultimasLeituras.find((l) => l.id_tipo_sinal === tipo.id_tipo_sinal);
-              // Com o wearable conectado, a frequência cardíaca vem direto do Bluetooth.
-              const aoVivo = tipo.nome === "Frequência Cardíaca" ? wearable.bpm : null;
+              // Com o wearable conectado, FC e SpO2 vêm direto do Bluetooth.
+              const aoVivo =
+                tipo.nome === "Frequência Cardíaca"
+                  ? wearable.bpm
+                  : tipo.nome === "Saturação de Oxigênio"
+                    ? wearable.spo2
+                    : null;
               return (
                 <Card key={tipo.id_tipo_sinal} style={styles.vitalCard}>
                   <Ionicons
@@ -190,6 +208,11 @@ export default function DashboardScreen() {
           <QuickAction icon="options-outline" label="Limites" onPress={() => router.push("/limits")} />
           <QuickAction icon="hardware-chip-outline" label="Dispositivo" onPress={() => router.push("/link-device")} />
           <QuickAction icon="person-add-outline" label="Monitorado" onPress={() => router.push("/add-monitored")} />
+        </View>
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          <QuickAction icon="analytics-outline" label="Relatórios" onPress={() => router.push("/report")} />
+          <QuickAction icon="create-outline" label="Editar" onPress={() => router.push("/edit-monitored")} />
+          <QuickAction icon="notifications-outline" label="Alertas" onPress={() => router.push("/alerts")} />
         </View>
       </View>
     </Screen>
