@@ -1,53 +1,34 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { Link, useLocalSearchParams, useRouter } from "expo-router";
+import { Link } from "expo-router";
 
 import { Screen, Title, Subtitle, ErrorBanner } from "@/components/vitatea/ui";
 import { TextField } from "@/components/vitatea/text-field";
 import { Button } from "@/components/vitatea/button";
 import { colors } from "@/constants/vitatea-theme";
-import { esqueciSenha, redefinirSenha } from "@/lib/api/auth";
+import { esqueciSenha } from "@/lib/api/auth";
 import { extrairErro } from "@/lib/api/client";
 
+// Recuperação de senha por e-mail:
+// 1. o usuário informa o e-mail e o backend envia um link;
+// 2. o link abre uma página web do backend, onde a nova senha é cadastrada;
+// 3. de volta ao app, o usuário entra com a nova senha.
+// O aplicativo nunca recebe nem exibe o token de redefinição.
 export default function ForgotPasswordScreen() {
-  const router = useRouter();
-  // O e-mail traz um link /forgot-password?token=...; ao abri-lo, o código já vem preenchido.
-  const { token: tokenDoLink } = useLocalSearchParams<{ token?: string }>();
-
-  const [etapa, setEtapa] = useState<"solicitar" | "redefinir">(tokenDoLink ? "redefinir" : "solicitar");
   const [email, setEmail] = useState("");
-  const [resetToken, setResetToken] = useState(tokenDoLink ?? "");
-  const [novaSenha, setNovaSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [mensagem, setMensagem] = useState<string | null>(null);
 
   async function handleSolicitar() {
-    if (!email) return setErro("Informe seu e-mail.");
+    if (!email.trim()) return setErro("Informe seu e-mail.");
     setErro(null);
     setCarregando(true);
     try {
       const resultado = await esqueciSenha(email.trim());
       setMensagem(resultado.message);
-      // Só em desenvolvimento (sem SMTP configurado) a API devolve o código na resposta.
-      if (resultado.resetToken) setResetToken(resultado.resetToken);
-      setEtapa("redefinir");
     } catch (error) {
       setErro(extrairErro(error, "Não foi possível solicitar a redefinição."));
-    } finally {
-      setCarregando(false);
-    }
-  }
-
-  async function handleRedefinir() {
-    if (!resetToken || !novaSenha) return setErro("Preencha o código e a nova senha.");
-    setErro(null);
-    setCarregando(true);
-    try {
-      await redefinirSenha(resetToken.trim(), novaSenha);
-      router.replace("/login");
-    } catch (error) {
-      setErro(extrairErro(error, "Não foi possível redefinir a senha."));
     } finally {
       setCarregando(false);
     }
@@ -58,46 +39,32 @@ export default function ForgotPasswordScreen() {
       <View style={{ marginTop: 24, gap: 4 }}>
         <Title>Recuperar senha</Title>
         <Subtitle>
-          {etapa === "solicitar"
-            ? "Informe o e-mail cadastrado para receber o link de redefinição."
-            : "Informe o código recebido por e-mail (ou abra o link) e a nova senha."}
+          {mensagem
+            ? "Abra o e-mail que enviamos e toque no link para criar uma nova senha. Depois, volte aqui e entre normalmente."
+            : "Informe o e-mail cadastrado para receber o link de redefinição."}
         </Subtitle>
       </View>
 
       <ErrorBanner message={erro ?? ""} />
-      {mensagem && etapa === "redefinir" ? (
-        <View style={styles.infoBanner}>
-          <Text style={styles.infoBannerText}>{mensagem}</Text>
-        </View>
-      ) : null}
 
-      {etapa === "solicitar" ? (
+      {mensagem ? (
+        <>
+          <View style={styles.infoBanner}>
+            <Text style={styles.infoBannerText}>{mensagem}</Text>
+          </View>
+          <Button title="Enviar novamente" onPress={handleSolicitar} loading={carregando} />
+        </>
+      ) : (
         <>
           <TextField
             label="E-mail"
             placeholder="seu@email.com"
             keyboardType="email-address"
+            autoCapitalize="none"
             value={email}
             onChangeText={setEmail}
           />
           <Button title="Enviar link por e-mail" onPress={handleSolicitar} loading={carregando} />
-        </>
-      ) : (
-        <>
-          <TextField
-            label="Código de redefinição"
-            placeholder="Cole aqui o código recebido"
-            value={resetToken}
-            onChangeText={setResetToken}
-          />
-          <TextField
-            label="Nova senha"
-            placeholder="Mínimo 6 caracteres"
-            isPassword
-            value={novaSenha}
-            onChangeText={setNovaSenha}
-          />
-          <Button title="Redefinir senha" onPress={handleRedefinir} loading={carregando} />
         </>
       )}
 
