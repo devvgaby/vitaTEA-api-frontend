@@ -19,9 +19,10 @@ export async function esqueciSenha(email: string) {
   return data;
 }
 
-export async function redefinirSenha(resetToken: string, novaSenha: string) {
+export async function redefinirSenha(email: string, codigo: string, novaSenha: string) {
   const { data } = await api.post<{ message: string }>("/auth/redefinir-senha", {
-    resetToken,
+    email,
+    codigo,
     novaSenha,
   });
   return data;

@@ -14,7 +14,7 @@ export default function ForgotPasswordScreen() {
 
   const [etapa, setEtapa] = useState<"solicitar" | "redefinir">("solicitar");
   const [email, setEmail] = useState("");
-  const [resetToken, setResetToken] = useState("");
+  const [codigo, setCodigo] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -36,11 +36,11 @@ export default function ForgotPasswordScreen() {
   }
 
   async function handleRedefinir() {
-    if (!resetToken || !novaSenha) return setErro("Preencha o código e a nova senha.");
+    if (!codigo || !novaSenha) return setErro("Preencha o código e a nova senha.");
     setErro(null);
     setCarregando(true);
     try {
-      await redefinirSenha(resetToken.trim(), novaSenha);
+      await redefinirSenha(email.trim(), codigo.trim(), novaSenha);
       router.replace("/login");
     } catch (error) {
       setErro(extrairErro(error, "Não foi possível redefinir a senha."));
@@ -56,7 +56,7 @@ export default function ForgotPasswordScreen() {
         <Subtitle>
           {etapa === "solicitar"
             ? "Informe o e-mail cadastrado para receber o código de redefinição."
-            : "Informe o código recebido e a nova senha."}
+            : "Informe o código de 6 dígitos recebido por e-mail e a nova senha."}
         </Subtitle>
       </View>
 
@@ -82,9 +82,11 @@ export default function ForgotPasswordScreen() {
         <>
           <TextField
             label="Código de redefinição"
-            placeholder="Cole aqui o código recebido"
-            value={resetToken}
-            onChangeText={setResetToken}
+            placeholder="000000"
+            keyboardType="number-pad"
+            maxLength={6}
+            value={codigo}
+            onChangeText={(texto) => setCodigo(texto.replace(/\D/g, ""))}
           />
           <TextField
             label="Nova senha"

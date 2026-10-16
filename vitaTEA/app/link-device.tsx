@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Pressable, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -50,7 +50,7 @@ export default function LinkDeviceScreen() {
     );
   }
 
-  // Sem Web Bluetooth (app nativo ou navegador sem suporte): vínculo manual pelo código.
+  // Sem Bluetooth nativo (navegador, iOS ou Expo Go): vínculo manual pelo código.
   if (!wearable.suportado) {
     return (
       <Screen>
@@ -62,8 +62,8 @@ export default function LinkDeviceScreen() {
         <View style={styles.infoBox}>
           <Ionicons name="information-circle-outline" size={18} color={colors.accent} />
           <Text style={styles.infoText}>
-            Este navegador não tem Bluetooth. Abra o app no Chrome ou Edge para procurar o wearable, ou
-            informe o nome dele (ex: VitaTEA-A1B2C3) para apenas vincular.
+            A conexão Bluetooth com o wearable funciona apenas no app Android instalado (APK). Aqui você
+            pode só vincular, informando o nome dele (ex: VitaTEA-A1B2C3).
           </Text>
         </View>
 
@@ -81,6 +81,9 @@ export default function LinkDeviceScreen() {
 
   const conectado = wearable.status === "conectado";
 
+  const conectando = wearable.status === "conectando";
+  const reconectando = wearable.status === "reconectando";
+
   return (
     <Screen>
       <ModalHeader title="Vincular dispositivo" />
@@ -92,8 +95,8 @@ export default function LinkDeviceScreen() {
         <Ionicons name="information-circle-outline" size={18} color={colors.accent} />
         <Text style={styles.infoText}>
           {dispositivo
-            ? `Este monitorado está vinculado ao dispositivo ${dispositivo.codigo}. Selecione-o na lista do navegador para conectar.`
-            : "O navegador vai listar os wearables VitaTEA ligados por perto. O que você escolher será vinculado a este monitorado."}
+            ? `Este monitorado está vinculado ao dispositivo ${dispositivo.codigo}. Toque nele na lista para conectar.`
+            : "Ligue o wearable perto do celular e toque em procurar. O que você escolher será vinculado a este monitorado."}
         </Text>
       </View>
 
@@ -112,13 +115,55 @@ export default function LinkDeviceScreen() {
         </Card>
       )}
 
+      {!conectado && (wearable.buscando || wearable.encontrados.length > 0) && (
+        <View style={{ gap: 8 }}>
+          {wearable.encontrados.map((item) => (
+            <Pressable
+              key={item.id}
+              disabled={conectando}
+              onPress={() => wearable.conectar(item)}
+              style={({ pressed }) => [styles.deviceItem, pressed && { opacity: 0.6 }]}
+            >
+              <Ionicons name="watch-outline" size={20} color={colors.primary} />
+              <Text style={styles.deviceName}>{item.nome}</Text>
+              {dispositivo?.codigo === item.nome && <Text style={styles.deviceTag}>vinculado</Text>}
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} style={{ marginLeft: "auto" }} />
+            </Pressable>
+          ))}
+          {wearable.buscando && (
+            <View style={styles.searching}>
+              <ActivityIndicator color={colors.primary} />
+              <Text style={styles.bpmLabel}>Procurando wearables VitaTEA...</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {!conectado && !reconectando && !wearable.buscando && wearable.encontrados.length === 0 && !conectando && (
+        <Text style={styles.bpmLabel}>Nenhum wearable na lista. Toque em procurar.</Text>
+      )}
+
+      {reconectando && !wearable.buscando && (
+        <View style={styles.searching}>
+          <ActivityIndicator color={colors.primary} />
+          <Text style={styles.bpmLabel}>Tentando reconectar a {dispositivo?.codigo ?? "o wearable"}...</Text>
+        </View>
+      )}
+
       {conectado ? (
         <Button title="Desconectar" variant="secondary" onPress={wearable.desconectar} />
+      ) : reconectando && !wearable.buscando ? (
+        <>
+          <Button title="Procurar dispositivos Bluetooth" onPress={wearable.buscar} />
+          <Button title="Parar de tentar reconectar" variant="secondary" onPress={wearable.desconectar} />
+        </>
+      ) : wearable.buscando ? (
+        <Button title="Parar busca" variant="secondary" onPress={wearable.pararBusca} />
       ) : (
         <Button
-          title="Procurar dispositivos Bluetooth"
-          onPress={wearable.conectar}
-          loading={wearable.status === "conectando"}
+          title={wearable.encontrados.length ? "Procurar novamente" : "Procurar dispositivos Bluetooth"}
+          onPress={wearable.buscar}
+          loading={conectando}
         />
       )}
     </Screen>
@@ -140,4 +185,16 @@ const styles = StyleSheet.create({
   bpmValue: { color: colors.text, fontSize: 26, fontWeight: "700" },
   bpmUnit: { fontSize: 13, color: colors.textMuted, fontWeight: "400" },
   bpmLabel: { color: colors.textMuted, fontSize: 12 },
+  deviceItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 14,
+    padding: 14,
+  },
+  deviceName: { color: colors.text, fontSize: 14, fontWeight: "600" },
+  deviceTag: { color: colors.success, fontSize: 11, fontWeight: "600" },
+  searching: { flexDirection: "row", alignItems: "center", gap: 8, justifyContent: "center", padding: 8 },
 });

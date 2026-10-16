@@ -29,7 +29,7 @@ export default function DashboardScreen() {
     useMonitorado();
   const wearable = useWearable();
   const bluetoothConectado = wearable.status === "conectado";
-  // No navegador com Bluetooth, vale a conexão real com o wearable; a API só sabe
+  // No app Android com Bluetooth, vale a conexão real com o wearable; a API só sabe
   // da última leitura e ainda considera "conectado" por alguns minutos após o desligamento.
   const conectado = wearable.suportado ? bluetoothConectado : !!statusDevice?.conectado;
 
@@ -111,7 +111,13 @@ export default function DashboardScreen() {
           <View
             style={[
               styles.statusDot,
-              { backgroundColor: conectado ? colors.success : colors.danger },
+              {
+                backgroundColor: conectado
+                  ? colors.success
+                  : wearable.status === "reconectando"
+                    ? colors.warning
+                    : colors.danger,
+              },
             ]}
           />
           <View style={{ flex: 1 }}>
@@ -119,7 +125,9 @@ export default function DashboardScreen() {
               {dispositivo
                 ? conectado
                   ? "Dispositivo conectado"
-                  : "Dispositivo desconectado"
+                  : wearable.status === "reconectando"
+                    ? "Reconectando ao dispositivo..."
+                    : "Dispositivo desconectado"
                 : "Nenhum dispositivo vinculado"}
             </Text>
             <Text style={styles.statusSubtitle}>
