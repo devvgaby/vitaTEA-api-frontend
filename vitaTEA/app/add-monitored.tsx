@@ -63,7 +63,7 @@ export default function AddMonitoredScreen() {
   return (
     <Screen>
       <ModalHeader title="Cadastrar monitorado" />
-      <Subtitle>Dados da criança ou adolescente que será monitorado (RN02).</Subtitle>
+      <Subtitle>Dados da criança ou adolescente que será monitorado.</Subtitle>
 
       <ErrorBanner message={erro ?? ""} />
 
