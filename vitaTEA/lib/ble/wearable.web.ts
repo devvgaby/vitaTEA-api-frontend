@@ -4,6 +4,11 @@ export const PREFIXO_NOME = "VitaTEA-";
 
 export type WearableEncontrado = { id: string; nome: string };
 
+export type CallbacksWearable = {
+  onBpm: (bpm: number) => void;
+  onSpo2: (spo2: number) => void;
+};
+
 export type ConexaoWearable = {
   nome: string;
   desconectar: () => void;

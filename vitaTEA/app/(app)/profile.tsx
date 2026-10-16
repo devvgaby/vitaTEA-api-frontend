@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, Pressable, Alert } from "react-native";
+import { View, Text, StyleSheet, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -7,17 +7,21 @@ import { Screen, Card, Title } from "@/components/vitatea/ui";
 import { colors, radius } from "@/constants/vitatea-theme";
 import { useAuth } from "@/context/AuthContext";
 import { useMonitorado } from "@/context/MonitoradoContext";
+import { useNotificacao } from "@/context/NotificacaoContext";
+import { confirmar } from "@/lib/confirmar";
 
 export default function ProfileScreen() {
   const { cuidador, logout } = useAuth();
   const { monitorados, monitoradoAtivo, selecionarMonitorado } = useMonitorado();
   const router = useRouter();
+  const { permissao, ativarNotificacoes } = useNotificacao();
 
-  function handleLogout() {
-    Alert.alert("Sair da conta", "Deseja realmente sair?", [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Sair", style: "destructive", onPress: logout },
-    ]);
+  async function handleLogout() {
+    const ok = await confirmar("Sair da conta", "Deseja realmente sair?", {
+      confirmarTexto: "Sair",
+      destrutivo: true,
+    });
+    if (ok) await logout();
   }
 
   return (
@@ -64,7 +68,36 @@ export default function ProfileScreen() {
         <MenuItem icon="person-add-outline" label="Cadastrar monitorado" onPress={() => router.push("/add-monitored")} />
         <MenuItem icon="hardware-chip-outline" label="Vincular dispositivo" onPress={() => router.push("/link-device")} />
         <MenuItem icon="options-outline" label="Configurar limites" onPress={() => router.push("/limits")} />
+        <MenuItem
+          icon="create-outline"
+          label="Editar monitorado e contatos"
+          onPress={() => router.push("/edit-monitored")}
+        />
+        <MenuItem icon="analytics-outline" label="Relatórios e gráficos" onPress={() => router.push("/report")} />
       </View>
+
+      {permissao !== "unsupported" && (
+        <View style={{ gap: 8 }}>
+          <Text style={styles.sectionTitle}>Notificações</Text>
+          {permissao === "granted" ? (
+            <Card style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 14 }}>
+              <Ionicons name="notifications" size={20} color={colors.success} />
+              <Text style={{ color: colors.text, fontSize: 14, flex: 1 }}>
+                Notificações de emergência ativadas neste navegador
+              </Text>
+            </Card>
+          ) : permissao === "denied" ? (
+            <Card style={{ paddingVertical: 14 }}>
+              <Text style={{ color: colors.textMuted, fontSize: 13 }}>
+                As notificações estão bloqueadas. Libere nas configurações do navegador (ícone de cadeado ao lado do
+                endereço) para receber avisos de emergência com o app em segundo plano.
+              </Text>
+            </Card>
+          ) : (
+            <MenuItem icon="notifications-outline" label="Ativar notificações de emergência" onPress={ativarNotificacoes} />
+          )}
+        </View>
+      )}
 
       <Pressable onPress={handleLogout} style={styles.logoutButton}>
         <Ionicons name="log-out-outline" size={18} color={colors.danger} />

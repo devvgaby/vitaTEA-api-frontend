@@ -10,7 +10,16 @@ export const PREFIXO_NOME = "VitaTEA-";
 const SERVICO_FC = "0000180d-0000-1000-8000-00805f9b34fb";
 const CARACT_FC = "00002a37-0000-1000-8000-00805f9b34fb";
 
+// Serviço de Oxímetro de Pulso (0x1822) e característica PLX Spot-check (0x2A5E).
+const SERVICO_OXI = "00001822-0000-1000-8000-00805f9b34fb";
+const CARACT_OXI = "00002a5e-0000-1000-8000-00805f9b34fb";
+
 export type WearableEncontrado = { id: string; nome: string };
+
+export type CallbacksWearable = {
+  onBpm: (bpm: number) => void; // 0 = sem medição
+  onSpo2: (spo2: number) => void; // 0 = sem medição
+};
 
 export type ConexaoWearable = {
   nome: string;
@@ -106,17 +115,25 @@ export function buscarWearables(
   return () => ble.stopDeviceScan();
 }
 
-// Lê o BPM do pacote de Frequência Cardíaca (vem em base64 pelo ble-plx).
+// O ble-plx entrega os valores das características em base64.
+const paraBytes = (base64: string) => Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+
+// Bit 0 das flags: 0 = BPM em uint8, 1 = BPM em uint16
 function lerBpm(base64: string): number {
-  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-  // Bit 0 das flags: 0 = BPM em uint8, 1 = BPM em uint16
+  const bytes = paraBytes(base64);
   return bytes[0] & 0x01 ? bytes[1] | (bytes[2] << 8) : bytes[1];
 }
 
-// Conecta e passa a chamar onBpm a cada notificação (0 = sem medição).
+// Byte 0 = flags; bytes 1-2 = SpO2 em SFLOAT (valor inteiro, expoente 0).
+function lerSpo2(base64: string): number {
+  const bytes = paraBytes(base64);
+  return (bytes[1] | (bytes[2] << 8)) & 0x0fff;
+}
+
+// Conecta e passa a chamar onBpm / onSpo2 a cada notificação (0 = sem medição).
 export async function conectarWearable(
   wearable: WearableEncontrado,
-  onBpm: (bpm: number) => void,
+  { onBpm, onSpo2 }: CallbacksWearable,
   onDesconectado: () => void,
 ): Promise<ConexaoWearable> {
   const ble = obterManager();
@@ -136,6 +153,17 @@ export async function conectarWearable(
       onBpm(lerBpm(caract.value));
     }),
   );
+
+  // Oxímetro: se o firmware for antigo e não tiver o serviço, segue só com o BPM.
+  const servicos = await device.services();
+  if (servicos.some((s) => s.uuid.toLowerCase() === SERVICO_OXI)) {
+    subs.push(
+      device.monitorCharacteristicForService(SERVICO_OXI, CARACT_OXI, (erro, caract) => {
+        if (erro || !caract?.value) return;
+        onSpo2(lerSpo2(caract.value));
+      }),
+    );
+  }
 
   subs.push(
     ble.onDeviceDisconnected(device.id, () => {

@@ -52,7 +52,21 @@ export async function criarContatoEmergencia(
   return data;
 }
 
-export async function listarContatosEmergencia() {
-  const { data } = await api.get<ContatoEmergencia[]>("/contatos-emergencia");
+export async function listarContatosEmergencia(id_monitorado?: number) {
+  const { data } = await api.get<ContatoEmergencia[]>("/contatos-emergencia", {
+    params: id_monitorado ? { id_monitorado } : undefined,
+  });
   return data;
+}
+
+export async function atualizarContatoEmergencia(
+  id_contato_emergencia: number,
+  dados: Partial<{ nome: string; telefone: string; parentesco: string }>,
+) {
+  const { data } = await api.put<ContatoEmergencia>(`/contatos-emergencia/${id_contato_emergencia}`, dados);
+  return data;
+}
+
+export async function excluirContatoEmergencia(id_contato_emergencia: number) {
+  await api.delete(`/contatos-emergencia/${id_contato_emergencia}`);
 }

@@ -20,7 +20,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.vitatea.app"
+      "package": "com.gabriellypontes.vitaTEA"
     },
     "web": {
       "output": "static",
@@ -52,6 +52,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "695689f5-c936-4d80-80ca-2c8e1d13bdad"
+      }
+    },
+    "owner": "gabriellypontes"
   }
 }

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/AuthContext";
 import { useMonitorado } from "@/context/MonitoradoContext";
+import { useNotificacao } from "@/context/NotificacaoContext";
 import { vincularDispositivo } from "@/lib/api/dispositivos";
 import { enviarLeitura } from "@/lib/api/leituras";
 import { listarTiposSinais } from "@/lib/api/limites";
@@ -17,6 +18,7 @@ import {
 } from "@/lib/ble/wearable";
 
 const NOME_SINAL_FC = "Frequência Cardíaca";
+const NOME_SINAL_SPO2 = "Saturação de Oxigênio";
 // Intervalo mínimo entre envios à API
 const INTERVALO_ENVIO_MS = 5000;
 // Tempo máximo de cada busca por wearables
@@ -34,6 +36,7 @@ type WearableContextValue = {
   suportado: boolean;
   status: StatusWearable;
   bpm: number | null; // null = sem medição (sem dedo no sensor)
+  spo2: number | null; // null = sem medição
   erro: string | null;
   buscando: boolean;
   encontrados: WearableEncontrado[];
@@ -52,15 +55,18 @@ function mensagemDeErro(error: unknown, fallback: string) {
 export function WearableProvider({ children }: { children: React.ReactNode }) {
   const { token } = useAuth();
   const { monitoradoAtivo, dispositivo, recarregar } = useMonitorado();
+  const { notificarAlerta } = useNotificacao();
 
   const [status, setStatus] = useState<StatusWearable>("desconectado");
   const [bpm, setBpm] = useState<number | null>(null);
+  const [spo2, setSpo2] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [buscando, setBuscando] = useState(false);
   const [encontrados, setEncontrados] = useState<WearableEncontrado[]>([]);
 
   const conexaoRef = useRef<ConexaoWearable | null>(null);
   const ultimoEnvioRef = useRef(0);
+  const ultimoEnvioSpo2Ref = useRef(0);
   const pararBuscaRef = useRef<(() => void) | null>(null);
   const timerBuscaRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -68,7 +74,11 @@ export function WearableProvider({ children }: { children: React.ReactNode }) {
   // "sessão" nova; tentativas de reconexão de uma sessão antiga são descartadas.
   const sessaoRef = useRef(0);
   const timerReconexaoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const tipoFCRef = useRef<number | null>(null);
+  const tiposRef = useRef<{ fc: number; spo2: number | null } | null>(null);
+  const notificarAlertaRef = useRef(notificarAlerta);
+  useEffect(() => {
+    notificarAlertaRef.current = notificarAlerta;
+  }, [notificarAlerta]);
   const autoConexaoFeitaRef = useRef<string | null>(null);
 
   const pararBusca = useCallback(() => {
@@ -114,36 +124,56 @@ export function WearableProvider({ children }: { children: React.ReactNode }) {
     conexaoRef.current = null;
     setStatus("desconectado");
     setBpm(null);
+    setSpo2(null);
   }, [cancelarReconexao]);
 
-  const obterTipoFC = useCallback(async () => {
-    if (tipoFCRef.current !== null) return tipoFCRef.current;
+  // IDs dos tipos de sinal na API. O SpO2 é opcional: se não existir, só não é enviado.
+  const obterTipos = useCallback(async () => {
+    if (tiposRef.current) return tiposRef.current;
     const tipos = await listarTiposSinais();
     const tipoFC = tipos.find((t) => t.nome === NOME_SINAL_FC);
     if (!tipoFC) throw new Error(`Tipo de sinal "${NOME_SINAL_FC}" não cadastrado na API.`);
-    tipoFCRef.current = tipoFC.id_tipo_sinal;
-    return tipoFC.id_tipo_sinal;
+    const tipoSpo2 = tipos.find((t) => t.nome === NOME_SINAL_SPO2);
+    tiposRef.current = { fc: tipoFC.id_tipo_sinal, spo2: tipoSpo2?.id_tipo_sinal ?? null };
+    return tiposRef.current;
   }, []);
+
+  // Envia uma leitura à API; se ela gerar alerta alto/crítico, avisa o cuidador na hora.
+  const enviar = useCallback(
+    (alvo: Dispositivo, idTipo: number, valor: number, ultimoEnvio: React.MutableRefObject<number>) => {
+      if (valor <= 0 || Date.now() - ultimoEnvio.current < INTERVALO_ENVIO_MS) return;
+      ultimoEnvio.current = Date.now();
+      enviarLeitura(alvo, idTipo, valor)
+        .then(({ alerta }) => {
+          setErro(null);
+          if (alerta) notificarAlertaRef.current(alerta);
+        })
+        .catch((error) => setErro(extrairErro(error, "Não foi possível enviar a leitura para a API.")));
+    },
+    [],
+  );
 
   // Conecta ao wearable e, se a conexão cair sem o usuário pedir, agenda a reconexão.
   const abrirConexao = useCallback(
     async (device: WearableEncontrado, alvo: Dispositivo, sessao: number) => {
-      const idTipoFC = await obterTipoFC();
+      const tipos = await obterTipos();
 
       const conexao = await conectarWearable(
         device,
-        (valor) => {
-          setBpm(valor > 0 ? valor : null);
-          if (valor <= 0 || Date.now() - ultimoEnvioRef.current < INTERVALO_ENVIO_MS) return;
-
-          ultimoEnvioRef.current = Date.now();
-          enviarLeitura(alvo, idTipoFC, valor)
-            .then(() => setErro(null))
-            .catch((error) => setErro(extrairErro(error, "Não foi possível enviar a leitura para a API.")));
+        {
+          onBpm: (valor) => {
+            setBpm(valor > 0 ? valor : null);
+            enviar(alvo, tipos.fc, valor, ultimoEnvioRef);
+          },
+          onSpo2: (valor) => {
+            setSpo2(valor > 0 ? valor : null);
+            if (tipos.spo2 !== null) enviar(alvo, tipos.spo2, valor, ultimoEnvioSpo2Ref);
+          },
         },
         () => {
           conexaoRef.current = null;
           setBpm(null);
+          setSpo2(null);
           if (sessaoRef.current === sessao) agendarReconexao(device, alvo, sessao, 0);
         },
       );
@@ -160,7 +190,7 @@ export function WearableProvider({ children }: { children: React.ReactNode }) {
     },
     // agendarReconexao é declarada abaixo e só usa refs e setters estáveis.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [obterTipoFC],
+    [obterTipos, enviar],
   );
 
   // Tenta de novo depois de uma espera crescente, até conectar ou a sessão mudar.
@@ -251,6 +281,7 @@ export function WearableProvider({ children }: { children: React.ReactNode }) {
         suportado: bluetoothSuportado(),
         status,
         bpm,
+        spo2,
         erro,
         buscando,
         encontrados,

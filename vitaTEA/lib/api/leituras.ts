@@ -1,21 +1,27 @@
 import { api } from "./client";
-import type { Dispositivo, LeituraDispositivo } from "./types";
+import type { Alerta, Dispositivo, LeituraDispositivo } from "./types";
 
-// A rota autentica pelo par id_dispositivo + codigo do dispositivo vinculado.
 export async function enviarLeitura(dispositivo: Dispositivo, id_tipo_sinal: number, valor: number) {
-  const { data } = await api.post<{ leitura: LeituraDispositivo }>("/leituras-dispositivos", {
-    id_dispositivo: dispositivo.id_dispositivo,
-    codigo: dispositivo.codigo,
-    id_tipo_sinal,
-    valor,
-    data_hora: new Date().toISOString(),
-  });
-  return data.leitura;
+  const { data } = await api.post<{ leitura: LeituraDispositivo; alerta: Alerta | null }>(
+    "/leituras-dispositivos",
+    {
+      id_dispositivo: dispositivo.id_dispositivo,
+      codigo: dispositivo.codigo,
+      id_tipo_sinal,
+      valor,
+      data_hora: new Date().toISOString(),
+    },
+  );
+  return data;
 }
 
-export async function listarLeiturasPorDispositivo(id_dispositivo: number) {
+export async function listarLeiturasPorDispositivo(
+  id_dispositivo: number,
+  opcoes: { limite?: number; desde?: string } = {},
+) {
   const { data } = await api.get<LeituraDispositivo[]>(
     `/leituras-dispositivos/dispositivo/${id_dispositivo}`,
+    { params: opcoes },
   );
   return data;
 }

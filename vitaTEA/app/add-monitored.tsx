@@ -46,7 +46,7 @@ export default function AddMonitoredScreen() {
           monitorado.id_monitorado,
           contatoNome.trim(),
           contatoTelefone.trim(),
-          contatoParentesco.trim(),
+          contatoParentesco.trim() || "Não informado",
         );
       }
 
@@ -63,7 +63,7 @@ export default function AddMonitoredScreen() {
   return (
     <Screen>
       <ModalHeader title="Cadastrar monitorado" />
-      <Subtitle>Dados da criança ou adolescente que será monitorado (RN02).</Subtitle>
+      <Subtitle>Dados da criança ou adolescente que será monitorado.</Subtitle>
 
       <ErrorBanner message={erro ?? ""} />
 

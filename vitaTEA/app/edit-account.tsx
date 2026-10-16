@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, Pressable, StyleSheet, Alert } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 
 import { Screen, Subtitle, ErrorBanner } from "@/components/vitatea/ui";
@@ -10,6 +10,7 @@ import { colors } from "@/constants/vitatea-theme";
 import { useAuth } from "@/context/AuthContext";
 import { atualizarConta, removerConta } from "@/lib/api/auth";
 import { extrairErro } from "@/lib/api/client";
+import { confirmar } from "@/lib/confirmar";
 
 export default function EditAccountScreen() {
   const router = useRouter();
@@ -39,27 +40,20 @@ export default function EditAccountScreen() {
     }
   }
 
-  function handleExcluir() {
+  async function handleExcluir() {
     if (!cuidador) return;
-    Alert.alert(
+    const ok = await confirmar(
       "Excluir conta",
       "Essa ação é permanente e não pode ser desfeita. Deseja continuar?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Excluir",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await removerConta(cuidador.id_cuidador);
-              await logout();
-            } catch (error) {
-              setErro(extrairErro(error, "Não foi possível excluir a conta."));
-            }
-          },
-        },
-      ],
+      { confirmarTexto: "Excluir", destrutivo: true },
     );
+    if (!ok) return;
+    try {
+      await removerConta(cuidador.id_cuidador);
+      await logout();
+    } catch (error) {
+      setErro(extrairErro(error, "Não foi possível excluir a conta."));
+    }
   }
 
   return (

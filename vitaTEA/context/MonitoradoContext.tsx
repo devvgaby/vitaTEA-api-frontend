@@ -66,7 +66,12 @@ export function MonitoradoProvider({ children }: { children: React.ReactNode }) 
         lista.find((m) => String(m.id_monitorado) === savedId) ?? lista[0] ?? null;
 
       setMonitoradoAtivo(ativo);
-      if (ativo) await carregarDispositivo(ativo.id_monitorado);
+      if (ativo) {
+        await carregarDispositivo(ativo.id_monitorado);
+      } else {
+        setDispositivo(null);
+        setStatusDevice(null);
+      }
     } catch (error) {
       setErro(extrairErro(error, "Não foi possível carregar os monitorados."));
     } finally {

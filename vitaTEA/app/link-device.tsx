@@ -115,6 +115,23 @@ export default function LinkDeviceScreen() {
         </Card>
       )}
 
+      {conectado && (
+        <Card style={styles.bpmCard}>
+          <Ionicons name="water" size={22} color={colors.primary} />
+          <View>
+            <Text style={styles.bpmValue}>
+              {wearable.spo2 ?? "--"}
+              <Text style={styles.bpmUnit}> %</Text>
+            </Text>
+            <Text style={styles.bpmLabel}>
+              {wearable.spo2 === null
+                ? "Saturação de oxigênio: mantenha o dedo parado (leva alguns segundos)..."
+                : "Saturação de oxigênio em tempo real"}
+            </Text>
+          </View>
+        </Card>
+      )}
+
       {!conectado && (wearable.buscando || wearable.encontrados.length > 0) && (
         <View style={{ gap: 8 }}>
           {wearable.encontrados.map((item) => (
