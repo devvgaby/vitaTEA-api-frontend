@@ -17,7 +17,22 @@ export async function cadastrar(nome: string, email: string, senha: string) {
 // O backend gera o token e envia o link por e-mail; a resposta nunca traz o token.
 // A nova senha é cadastrada na página web aberta pelo link do e-mail.
 export async function esqueciSenha(email: string) {
+<<<<<<< HEAD
   const { data } = await api.post<{ message: string }>("/auth/esqueci-senha", { email });
+=======
+  const { data } = await api.post<{ message: string; resetToken?: string }>("/auth/esqueci-senha", {
+    email,
+  });
+  return data;
+}
+
+export async function redefinirSenha(email: string, codigo: string, novaSenha: string) {
+  const { data } = await api.post<{ message: string }>("/auth/redefinir-senha", {
+    email,
+    codigo,
+    novaSenha,
+  });
+>>>>>>> b7755bcea73e8f589115f0d1bea5b91efa75109f
   return data;
 }
 

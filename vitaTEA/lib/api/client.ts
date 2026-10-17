@@ -1,7 +1,24 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
+import { Platform } from "react-native";
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+const API_PORT = 3000;
+
+// No emulador/celular, "localhost" aponta para o próprio aparelho, não para o PC.
+// Em desenvolvimento usamos o mesmo IP do PC que está servindo o Metro (hostUri);
+// no emulador Android sem hostUri, 10.0.2.2 é o alias do PC.
+function resolverApiUrl(): string {
+  if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
+  if (Platform.OS === "web") return `http://localhost:${API_PORT}`;
+
+  const host = Constants.expoConfig?.hostUri?.split(":")[0];
+  if (host && host !== "localhost" && host !== "127.0.0.1") return `http://${host}:${API_PORT}`;
+
+  return Platform.OS === "android" ? `http://10.0.2.2:${API_PORT}` : `http://localhost:${API_PORT}`;
+}
+
+export const API_URL = resolverApiUrl();
 
 export const TOKEN_KEY = "vitatea:token";
 export const CUIDADOR_KEY = "vitatea:cuidador";
